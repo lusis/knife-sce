@@ -33,7 +33,29 @@ If your knife.rb file will be checked into a SCM system (ie readable by others) 
 
 = Subcommands:
 
-...
+== knife sce key create KEYNAME
+
+Create a keypair of a given name.
+
+== knife sce key delete KEYNAME
+
+Delete a keypair of a given name.
+
+== knife sce key get KEYNAME
+
+Get all the details of a given key.
+
+== knife sce key list
+
+List all keypairs.
+
+== knife sce location list
+
+List available locations (data centers).
+
+== knife sce server list
+
+List SCE servers.
 
 = License:
 
