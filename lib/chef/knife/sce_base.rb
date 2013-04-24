@@ -68,13 +68,6 @@ class Chef
         end
       end
       
-=begin
-      def is_image_windows?
-        image_info = connection.images.get(@server.image_id)
-        return image_info.platform == 'windows'
-      end
-=end
-      
       def validate!(keys=[:ibm_username, :ibm_password])
         errors = []
         keys.each do |k|
