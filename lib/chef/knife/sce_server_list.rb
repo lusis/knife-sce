@@ -31,11 +31,13 @@ class Chef
         :boolean => true,
         :default => true,
         :description => "Do not display name tag in output"
-
-      option :tags,
-        :short => "-t TAG1,TAG2",
-        :long => "--tags TAG1,TAG2",
-        :description => "List of tags to output"
+        
+      option :owner,
+        :short => "-o",
+        :long => "--no-owner",
+        :boolean => true,
+        :default => true,
+        :description => "Do not display owner in output"
       
       def run!
         connection.servers.all
@@ -48,69 +50,44 @@ class Chef
         
         server_list = [
           ui.color('Instance ID', :bold),
-        
           if config[:name]
             ui.color("Name", :bold)
           end,
-
+          if config[:owner]
+            ui.color("Owner", :bold)
+          end,
           ui.color('Public IP', :bold),
           ui.color('Flavor', :bold),
           ui.color('Image', :bold),
           ui.color('SSH Key', :bold),
-          ui.color('Security Groups', :bold),
-          
-          if config[:tags]
-            config[:tags].split(",").collect do |tag_name|
-              ui.color("Tag:#{tag_name}", :bold)
-            end
-          end,
-          
+          ui.color('Expires', :bold),
+          ui.color('Request', :bold),
           ui.color('State', :bold)
+          
         ].flatten.compact
+        
+        output_column_count = server_list.length
         
         servers = run!
         
         servers.each do |server|
-          puts server.inspect
-        end
-=begin
-        
-        output_column_count = server_list.length
-        
-        connection.servers.all.each do |server|
           server_list << server.id.to_s
-          
           if config[:name]
-            server_list << server.tags["Name"].to_s
+            server_list << server.name.to_s
           end
-          
-          server_list << server.public_ip_address.to_s
-          server_list << server.private_ip_address.to_s
-          server_list << server.flavor_id.to_s
+          if config[:owner]
+            server_list << server.owner.to_s
+          end
+          server_list << server.ip.to_s
+          server_list << server.instance_type.to_s
           server_list << server.image_id.to_s
           server_list << server.key_name.to_s
-          server_list << server.groups.join(", ")
-          
-          if config[:tags]
-            config[:tags].split(",").each do |tag_name|
-              server_list << server.tags[tag_name].to_s
-            end
-          end
-          
-          server_list << begin
-            state = server.state.to_s.downcase
-            case state
-            when 'shutting-down','terminated','stopping','stopped'
-              ui.color(state, :red)
-            when 'pending'
-              ui.color(state, :yellow)
-            else
-              ui.color(state, :green)
-            end
-          end
+          server_list << server.expires_at.to_s
+          server_list << server.request_id.to_s
+          server_list << server.state.to_s
         end
+        
         puts ui.list(server_list, :uneven_columns_across, output_column_count)
-=end
 
       end
     end
