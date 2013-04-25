@@ -65,7 +65,16 @@ class Chef
         @name_args.each do |instance_id|
 
           begin
+            
             @server = connection.servers.get(instance_id)
+            
+            if @server.nil?
+              connection.servers.all.each do |s|
+                if s.name.to_s == instance_id
+                  @server = s
+                end
+              end
+            end
             
             msg_pair("Instance ID", @server.id.to_s)
             msg_pair("Name", @server.name.to_s)
@@ -80,7 +89,14 @@ class Chef
             puts "\n"
             confirm("Do you really want to delete this server")
             
-            @server.destroy
+            begin
+              @server.destroy
+            rescue Excon::Errors::PreconditionFailed => e
+              if e.data[:body].index("Active or Failed").nil?
+                ui.error e.data[:body].to_s
+                exit 1
+              end
+            end
 
             ui.warn("Deleted server #{@server.id}")
 
