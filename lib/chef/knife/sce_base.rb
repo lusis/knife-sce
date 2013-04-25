@@ -56,6 +56,16 @@ class Chef
           )
         end
       end
+      
+      def connection_storage
+        @connection_storage ||= begin
+          connection_storage = Fog::Storage.new(
+            :provider => 'IBM',
+            :ibm_username => Chef::Config[:knife][:ibm_username],
+            :ibm_password => Chef::Config[:knife][:ibm_password]
+          )
+        end
+      end
 
       def locate_config_value(key)
         key = key.to_sym

@@ -73,6 +73,10 @@ List available locations (data centers).
 
 Outputs all known information about the image.  Use this command to learn what flavors are available for a given image.
 
+== knife sce storage offerings (options)
+
+Lists available storage offerings for current SCE account.
+
 = License:
 
 Author:: Rad Gruchalski (<radek@gruchalski.com>)
