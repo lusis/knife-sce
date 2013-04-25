@@ -182,12 +182,12 @@ class Chef
       def wait_for_server_active(server)
         server.wait_for { print "."; ready? }
       end
-
+      
       def run
         
         $stdout.sync = true
         
-        Fog.timeout = 6000
+        Fog.timeout = Chef::Config[:knife][:sce_max_timeout] || 6000
 
         validate!
 
@@ -197,6 +197,7 @@ class Chef
         # elastic_ip = connection.addresses.detect{|addr| addr if addr.public_ip == requested_elastic_ip}
         
         begin
+          
           definition = create_server_def
           
           # SCE library gives me an excon response object, we have to fetch the server object ourselves:
@@ -207,6 +208,7 @@ class Chef
           raise "Creating a server failed." if @server.nil?
           
           msg_pair("Instance ID", @server.id.to_s)
+          msg_pair("Name", @server.name.to_s)
           msg_pair("Flavor", @server.instance_type.to_s)
           msg_pair("Image", @server.image_id.to_s)
           msg_pair("Region", connection.locations.get(@server.location).name.to_s)
@@ -214,91 +216,33 @@ class Chef
           
           print "\n#{ui.color("Waiting for server", :magenta)}"
           
+          msg_pair("Public DNS Name", @server.primary_ip["hostname"].to_s)
+          msg_pair("Public IP Address", @server.primary_ip["ip"].to_s)
+          msg_pair("Owner", @server.owner.to_s)
+          msg_pair("Environment", config[:environment] || '_default')
+          msg_pair("Run List", (config[:run_list] || []).join(', '))
+          msg_pair("JSON Attributes",config[:json_attributes]) unless !config[:json_attributes] || config[:json_attributes].empty?
+          
           @server.wait_for { print "."; ready? }
           
           wait_for_sshd(ssh_connect_host)
           
           bootstrap_for_node(@server, ssh_connect_host).run
           
-=begin
-if config[:associate_eip]
-  connection.associate_address(server.id, elastic_ip.public_ip, nil, elastic_ip.allocation_id)
-  @server.wait_for { public_ip_address == elastic_ip.public_ip }
-end
-
-puts("\n")
-=end
-
-=begin
-if vlan_mode?
-  msg_pair("Subnet ID", @server.subnet_id)
-  if elastic_ip
-    msg_pair("Public IP Address", @server.public_ip_address)
-  end
-else
-  msg_pair("Public DNS Name", @server.dns_name)
-  msg_pair("Public IP Address", @server.public_ip_address)
-  msg_pair("Private DNS Name", @server.private_dns_name)
-end
-msg_pair("Private IP Address", @server.private_ip_address)
-=end
-          
-          exit 1
         rescue Excon::Errors::PreconditionFailed => e
           ui.error e.response.data[:body]
+          exit 1
         end
-=begin
-
-
         
-
-        bootstrap_for_node(@server,ssh_connect_host).run
-
-        puts "\n"
-        msg_pair("Instance ID", @server.id)
-        msg_pair("Flavor", @server.flavor_id)
-        msg_pair("Image", @server.image_id)
-        msg_pair("Region", connection.instance_variable_get(:@region))
-        msg_pair("Availability Zone", @server.availability_zone)
-        msg_pair("Security Groups", printed_security_groups) unless vpc_mode? or (@server.groups.nil? and @server.security_group_ids)
-        msg_pair("Security Group Ids", printed_security_group_ids) if vpc_mode? or @server.security_group_ids
-        msg_pair("Tags", hashed_tags)
-        msg_pair("SSH Key", @server.key_name)
-        msg_pair("Root Device Type", @server.root_device_type)
-        if @server.root_device_type == "ebs"
-          device_map = @server.block_device_mapping.first
-          msg_pair("Root Volume ID", device_map['volumeId'])
-          msg_pair("Root Device Name", device_map['deviceName'])
-          msg_pair("Root Device Delete on Terminate", device_map['deleteOnTermination'])
-
-          if config[:ebs_size]
-            if ami.block_device_mapping.first['volumeSize'].to_i < config[:ebs_size].to_i
-              volume_too_large_warning = "#{config[:ebs_size]}GB " +
-                          "EBS volume size is larger than size set in AMI of " +
-                          "#{ami.block_device_mapping.first['volumeSize']}GB.\n" +
-                          "Use file system tools to make use of the increased volume size."
-              msg_pair("Warning", volume_too_large_warning, :yellow)
-            end
-          end
-        end
-        if config[:ebs_optimized]
-          msg_pair("EBS is Optimized", @server.ebs_optimized.to_s)
-        end
-        if vpc_mode?
-          msg_pair("Subnet ID", @server.subnet_id)
-        else
-          msg_pair("Public DNS Name", @server.dns_name)
-          msg_pair("Public IP Address", @server.public_ip_address)
-          msg_pair("Private DNS Name", @server.private_dns_name)
-        end
-        msg_pair("Private IP Address", @server.private_ip_address)
-        msg_pair("Environment", config[:environment] || '_default')
-        msg_pair("Run List", (config[:run_list] || []).join(', '))
-        msg_pair("JSON Attributes",config[:json_attributes]) unless !config[:json_attributes] || config[:json_attributes].empty?
-=end
       end
 
       def bootstrap_for_node(server,ssh_host)
+        
+        # Chef::Knife:Ssh is going to use ssh_user setting from knife.rb
+        # over the one that we hand to it.
+        # To overrule this setting we have to override to Chef knife.rb setting.
+        Chef::Config[:knife][:ssh_user] = config[:sce_ssh_user]
+        
         bootstrap = Chef::Knife::Bootstrap.new
         bootstrap.name_args = [ssh_host]
         bootstrap.config[:run_list] = locate_config_value(:run_list) || []
@@ -314,7 +258,7 @@ msg_pair("Private IP Address", @server.private_ip_address)
         bootstrap.config[:use_sudo] = true unless config[:sce_ssh_user] == 'root'
         bootstrap.config[:template_file] = locate_config_value(:template_file)
         bootstrap.config[:environment] = config[:environment]
-        # may be needed for vpc_mode
+        # may be needed for vlan_mode
         bootstrap.config[:host_key_verify] = config[:host_key_verify]
         # Modify global configuration state to ensure hint gets set by
         # knife-bootstrap
@@ -329,27 +273,29 @@ msg_pair("Private IP Address", @server.private_ip_address)
         !!locate_config_value(:vlan_id)
       end
 
-      def ami
-        @ami ||= connection.images.get(locate_config_value(:image))
+      def sce_image
+        @sce_image ||= connection.images.get(locate_config_value(:image))
       end
 
       def validate!
 
         super([:image, :ibm_username, :ibm_password])
 
-        if ami.nil?
-          ui.error("You have not provided a valid image (AMI) value.  Please note the short option for this value recently changed from '-i' to '-I'.")
+        if sce_image.nil?
+          ui.error("You have not provided a valid image value.  Please note the short option for this value recently changed from '-i' to '-I'.")
           exit 1
         end
-        
+=begin
         if config[:associate_ip]
-          eips = connection.addresses.collect{|addr| addr if addr.domain == eip_scope}.compact
+          ips = connection.addresses.collect{|addr| addr if addr.domain == eip_scope}.compact
 
           unless eips.detect{|addr| addr.public_ip == config[:associate_eip] && addr.server_id == nil}
             ui.error("Elastic IP requested is not available.")
             exit 1
           end
         end
+=end
+
       end
 
       def eip_scope
@@ -374,11 +320,6 @@ msg_pair("Private IP Address", @server.private_ip_address)
           :configuration_data => locate_config_value(:configuration_data),
           :anti_collocation_instance => locate_config_value(:anti_collocation_instance),
         }
-=begin
-        (config[:ephemeral] || []).each_with_index do |device_name, i|
-          server_def[:block_device_mapping] = (server_def[:block_device_mapping] || []) << {'VirtualName' => "ephemeral#{i}", 'DeviceName' => device_name}
-        end
-=end
         server_def
       end
 
@@ -424,6 +365,7 @@ msg_pair("Private IP Address", @server.private_ip_address)
           server.ip.to_s
         end
       end
+      
     end
   end
 end
