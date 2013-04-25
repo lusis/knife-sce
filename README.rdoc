@@ -33,19 +33,19 @@ If your knife.rb file will be checked into a SCM system (ie readable by others) 
 
 = Subcommands:
 
-== knife sce server create
+== knife sce server create (options)
 
 Provisions a new server in the IBM SCE and then performs a Chef bootstrap (using the SSH protocol).  The goal of the bootstrap is to get Chef installed on the target system so it can run Chef Client with a Chef Server. The main assumption is a baseline OS installation exists (provided by the provisioning). It is primarily intended for Chef Client systems that talk to a Chef server.  By default the server is bootstrapped using the {ubuntu10.04-gems}[https://github.com/opscode/chef/blob/master/chef/lib/chef/knife/bootstrap/ubuntu10.04-gems.erb] template.  This can be overridden using the <tt>-d</tt> or <tt>--template-file</tt> command options.
 
-== knife sce server delete
+== knife sce server delete SERVER [SERVER] (options)
 
 Deletes an existing server in the currently configured SCE account.  <b>PLEASE NOTE</b> - By default, this does not delete the associated node and client objects from the Chef server.  To do so, add the <tt>--purge</tt> flag.
 
-== knife sce server list
+== knife sce server list (options)
 
 Outputs a list of all servers in the currently configured SCE account.  <b>PLEASE NOTE</b> - this shows all instances associated with the account, some of which may not be currently managed by the Chef server.
 
-== knife sce instance data
+== knife sce instance data (options)
 
 Generates instance metadata in meant to be used with Opscode's custom SCE image. This will read your knife configuration <tt>~/.chef/knife.rb</tt> for the validation certificate and Chef server URL to use and output in JSON format. The subcommand also accepts a list of roles/recipes that will be in the node's initial run list.
 
@@ -63,13 +63,13 @@ Get all the details of a given key.
 
 == knife sce key list
 
-List all key pairs.
+List all key pairs created by the current SCE account.
 
-== knife sce location list
+== knife sce location list (options)
 
 List available locations (data centers).
 
-== knife sce image describe
+== knife sce image describe IMAGE_ID [IMAGE_ID]
 
 Outputs all known information about the image.  Use this command to learn what flavors are available for a given image.
 

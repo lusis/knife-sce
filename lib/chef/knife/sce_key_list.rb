@@ -23,7 +23,7 @@ class Chef
 
       include Knife::SceBase
 
-      banner "knife sce key list (options)"
+      banner "knife sce key list"
       
       def run!
         connection.keys.all

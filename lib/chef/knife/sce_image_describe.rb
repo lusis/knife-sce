@@ -29,7 +29,7 @@ class Chef
 
       include Knife::SceBase
 
-      banner "knife sce image describe IMAGE_ID [IMAGE_ID] (options)"
+      banner "knife sce image describe IMAGE_ID [IMAGE_ID]"
 
       def run
 
