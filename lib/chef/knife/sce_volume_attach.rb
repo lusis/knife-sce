@@ -33,10 +33,14 @@ class Chef
         
         (1..@name_args.length-1).each do |idx|
           puts "Attaching volume #{@name_args[idx]} to #{name_args[0]}"
-          res = connection.modify_instance(@name_args[0], {
-            "type" => "attach",
-            "storageID" => @name_args[idx]
-          })
+          begin
+            res = connection.modify_instance(@name_args[0], {
+              "type" => "attach",
+              "storageID" => @name_args[idx]
+            })
+          rescue Exception => e
+            ui.error("There was an error while attaching volume #{@name_args[idx]}.  Error is #{e.to_s}")
+          end
         end
         
       end

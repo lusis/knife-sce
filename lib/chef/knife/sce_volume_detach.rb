@@ -33,10 +33,15 @@ class Chef
         
         (1..@name_args.length-1).each do |idx|
           puts "Detaching volume #{@name_args[idx]} from #{name_args[0]}"
-          res = connection.modify_instance(@name_args[0], {
-            "type" => "detach",
-            "storageID" => @name_args[idx]
-          })
+          begin
+            res = connection.modify_instance(@name_args[0], {
+              "type" => "detach",
+              "storageID" => @name_args[idx]
+            })
+            puts "Detach request for volume #{@name_args[idx]} issued."
+          rescue Exception => e
+            ui.error("There was an error while detaching volume #{@name_args[idx]}.  Error is #{e.to_s}")
+          end
         end
         
       end

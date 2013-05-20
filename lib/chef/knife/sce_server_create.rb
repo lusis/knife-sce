@@ -282,19 +282,27 @@ class Chef
         super([:image, :ibm_username, :ibm_password])
 
         if sce_image.nil?
-          ui.error("You have not provided a valid image value.  Please note the short option for this value recently changed from '-i' to '-I'.")
+          ui.error("You have not provided a valid image value.")
           exit 1
         end
-=begin
-        if config[:associate_ip]
-          ips = connection.addresses.collect{|addr| addr if addr.domain == eip_scope}.compact
-
-          unless eips.detect{|addr| addr.public_ip == config[:associate_eip] && addr.server_id == nil}
-            ui.error("Elastic IP requested is not available.")
+        
+        if locate_config_value(:sce_flavor).nil?
+          ui.error("No flavor provided.  Use knife sce image describe to list supported flavors for used image.")
+          exit 1
+        else
+          
+          flavor_found = false
+          @sce_image.supported_instance_types.each do |sit|
+            if sit.sit.id.to_s.eql?( locate_config_value(:sce_flavor) )
+              flavor_found = true
+            end
+          end
+          if !flavor_found
+            ui.error("Flavor #{config[:sce_flavor]} is not supported for image #{locate_config_value(:image)}.  Use knife sce image describe to list supported flavors for used image.")
             exit 1
           end
+          
         end
-=end
 
       end
 

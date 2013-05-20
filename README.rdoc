@@ -31,6 +31,16 @@ If your knife.rb file will be checked into a SCM system (ie readable by others) 
     knife[:ibm_username] = "#{ENV['IBM_USERNAME']}"
     knife[:ibm_password] = "#{ENV['IBM_PASSWORD']}"
 
+= Supported knife.rb configuration options
+
+    knife[:ibm_username] = <your IBM SCE username>
+    knife[:ibm_password] = <your IBM SCE password>
+    knife[:sce_image] = <SCE image ID>
+    knife[:sce_flavor] = <SCE flavor>
+    knife[:sce_location_id] = <SCE location>
+    knife[:sce_ssh_user] = <SCE user>
+    knife[:sce_max_timeout] = <SCE timeout> # use high value, SCE 2.2 requires long timeouts, 6000 should be enough
+
 = Subcommands:
 
 == knife sce server create (options)
@@ -76,6 +86,26 @@ Outputs all known information about the image.  Use this command to learn what f
 == knife sce storage offerings (options)
 
 Lists available storage offerings for current SCE account.
+
+== knife sce volume attach INSTANCE_ID VOLUME [VOLUME]
+
+Attach single or multiple volumes to an instance.  Volumes are not automatically mounted.
+
+== knife sce volume create (options)
+
+Issue a volume creation request.  To learn what is the offer id and supported size, use `knife sce storage offerings`.
+
+== knife sce volume delete VOLUME [VOLUME]
+
+Delete single or multiple volumes.  Volumes must be `Detached` before the delete request is issued.
+
+== knife sce volume detach INSTANCE_ID VOLUME [VOLUME]
+
+Detach single or multiple volumes.
+
+== knife sce volume list (options)
+
+List SCE volumes.
 
 = License:
 

@@ -94,11 +94,30 @@ class Chef
 
       def validate!
 
-        super([:ibm_username, :ibm_password])
+        super([:ibm_username, :ibm_password, :size, :format, :offering_id, :datacenter, :name])
         
-=begin
-        # Add more validation
-=end
+        @offering = connection_storage.offerings.get( config[:offering_id] )
+        
+        if @offering.nil?
+          ui.error("Storage offering #{config[:offering_id]} does not exist.")
+          exit 1
+        else
+          
+          formats = []
+          @offering.supported_formats.each do |format|
+            formats << format["id"]
+          end
+          sizes = @offering.supported_sizes.split(",")
+          
+          if !formats.include?( config[:format].upcase )
+            ui.error("Format #{config[:format].upcase} not supported.")
+            exit 1
+          end
+          if !sizes.include?( config[:size] )
+            ui.error("Format #{config[:size]} not supported.")
+            exit 1
+          end
+        end
 
       end
       

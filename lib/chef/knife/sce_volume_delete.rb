@@ -33,14 +33,14 @@ class Chef
         
         @name_args.each do |v|
           connection_storage.volumes.all.each do |volume|
-            if volume.id == v || volume.name == v
+            if volume.id.eql?( v ) || volume.name.eql?( v )
               ui.confirm "Are you sure you want to delete volume #{volume.name}"
               begin
                 volume.destroy
-              rescue
-                # ignore errors
+                puts "Delete request for volume #{volume.name} issued."
+              rescue Exception => e
+                ui.error("There was an error while issuing a delete request for volume #{@name_args[idx]}.  Error is #{e.to_s}")
               end
-              puts "Volume #{volume.name} deleted."
             end
           end
         end

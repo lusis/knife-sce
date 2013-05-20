@@ -78,7 +78,7 @@ class Chef
           if config[:owner]
             server_list << server.owner.to_s
           end
-          server_list << server.ip.to_s
+          server_list << server.primary_ip['hostname'].to_s
           server_list << server.instance_type.to_s
           server_list << server.image_id.to_s
           server_list << server.key_name.to_s
