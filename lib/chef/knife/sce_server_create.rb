@@ -319,7 +319,7 @@ class Chef
           :name => locate_config_value(:chef_node_name),
           :image_id => locate_config_value(:image),
           :instance_type => locate_config_value(:sce_flavor),
-          :location => locate_config_value(:datacenter).to_i,
+          :location => datacenter_id.to_i,
           :key_name => File.basename(locate_config_value(:identity_file), ".*"),
           :ip => locate_config_value(:ip),
           :vlan_id => locate_config_value(:vlan_id),

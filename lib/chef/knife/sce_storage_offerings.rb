@@ -56,7 +56,8 @@ class Chef
           end
           sizes = offer.supported_sizes.split(",")
           
-          if config[:datacenter].nil? or config[:datacenter] == offer.location
+          did = datacenter_id
+          if did.nil? or did.eql?( offer.location )
           
             offer_list << offer.id.to_s
             offer_list << offer.name.to_s

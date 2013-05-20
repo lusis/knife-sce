@@ -48,7 +48,8 @@ class Chef
         
         address_offerings.each do |offer|
           
-          if config[:datacenter].nil? or config[:datacenter] == offer["location"]
+          did = datacenter_id
+          if did.nil? or did.eql?( offer["location"] )
           
             offer_list << offer["id"].to_s
             offer_list << connection.locations.get(offer["location"]).name

@@ -64,7 +64,7 @@ class Chef
           :name => config[:name],
           :offering_id => config[:offering_id],
           :format => config[:format].upcase,
-          :location_id => config[:datacenter],
+          :location_id => datacenter_id,
           :size => config[:size]
         }
         

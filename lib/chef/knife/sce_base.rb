@@ -15,6 +15,12 @@
 # limitations under the License.
 #
 
+class String
+  def is_number?
+    true if Float(self) rescue false
+  end
+end
+
 require 'chef/knife'
 
 class Chef
@@ -70,6 +76,32 @@ class Chef
       def locate_config_value(key)
         key = key.to_sym
         config[key] || Chef::Config[:knife][key]
+      end
+      
+      def datacenter_id
+        id = nil
+        if locate_config_value(:datacenter).to_s.is_number?
+          location = connection.locations.get( locate_config_value(:datacenter) )
+          if !location.nil?
+            id = location.id.to_s
+          else
+            ui.error("Location ID #{locate_config_value(:datacenter)} is invalid.  Use knife sce location list to learn what IDs or textual locations are available.")
+            exit 1
+          end
+        else
+          connection.locations.all.each do |location|
+            if location.name.to_s.split(",").first.downcase.eql?( locate_config_value(:datacenter).downcase )
+              id = location.id.to_s
+            end
+          end
+        end
+        
+        if id.nil?
+          ui.error("Location #{locate_config_value(:datacenter)} is invalid.  Use knife sce location list to learn what IDs or textual locations are available.")
+          exit 1
+        end
+        
+        id
       end
 
       def msg_pair(label, value, color=:cyan)
