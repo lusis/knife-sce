@@ -93,11 +93,11 @@ Attach single or multiple volumes to an instance.  Volumes are not automatically
 
 == knife sce volume create (options)
 
-Issue a volume creation request.  To learn what is the offer id and supported size, use `knife sce storage offerings`.
+Issue a volume creation request.  To learn what is the offer id and supported size, use <tt>knife sce storage offerings</tt>.
 
 == knife sce volume delete VOLUME [VOLUME]
 
-Delete single or multiple volumes.  Volumes must be `Detached` before the delete request is issued.
+Delete single or multiple volumes.  Volumes must be <tt>Detached</tt> before the delete request is issued.
 
 == knife sce volume detach INSTANCE_ID VOLUME [VOLUME]
 
