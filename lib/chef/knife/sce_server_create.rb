@@ -293,7 +293,7 @@ class Chef
           
           flavor_found = false
           @sce_image.supported_instance_types.each do |sit|
-            if sit.sit.id.to_s.eql?( locate_config_value(:sce_flavor) )
+            if sit.id.to_s.eql?( locate_config_value(:sce_flavor) )
               flavor_found = true
             end
           end
