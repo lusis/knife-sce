@@ -44,10 +44,10 @@ class Chef
         
         vlans = run!
         
-        vlans.each do |address|
-          vlan_list << address.name.to_s
-          vlan_list << connection.locations.get(address.location).name.to_s
-          vlan_list << address.vlan_id.to_s
+        vlans.each do |vlan|
+          vlan_list << vlan.name.to_s
+          vlan_list << connection.locations.get(vlan.location).name.to_s
+          vlan_list << vlan.id.to_s
         end
         
         puts ui.list(vlan_list, :uneven_columns_across, output_column_count)
