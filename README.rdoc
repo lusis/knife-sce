@@ -107,6 +107,10 @@ Detach single or multiple volumes.
 
 List SCE volumes.
 
+== knife sce vlan list
+
+List SCE VLANs
+
 = License:
 
 Author:: Rad Gruchalski (<radek@gruchalski.com>)
