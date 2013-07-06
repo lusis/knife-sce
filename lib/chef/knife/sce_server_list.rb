@@ -57,6 +57,7 @@ class Chef
             ui.color("Owner", :bold)
           end,
           ui.color('Public IP', :bold),
+          ui.color('Secondary IPs', :bold),
           ui.color('Flavor', :bold),
           ui.color('Image', :bold),
           ui.color('SSH Key', :bold),
@@ -79,6 +80,13 @@ class Chef
             server_list << server.owner.to_s
           end
           server_list << server.primary_ip['hostname'].to_s
+          if server.secondary_ip.empty?
+            server_list << "n/a"
+          else
+            ips = []
+            server.secondary_ip.each {|sip| ips << sip['ip'] }
+            server_list << ips.join(",")
+          end
           server_list << server.instance_type.to_s
           server_list << server.image_id.to_s
           server_list << server.key_name.to_s

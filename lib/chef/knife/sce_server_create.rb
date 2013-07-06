@@ -36,7 +36,7 @@ class Chef
       attr_accessor :initial_sleep_delay
       attr_reader :server
 
-      option :image,
+      option :sce_image,
         :short => "-I IMAGE",
         :long => "--image IMAGE",
         :description => "The SCE image ID for the server",
@@ -62,7 +62,17 @@ class Chef
       option :associate_ip,
         :long => "--associate-ip IP_ADDRESS",
         :description => "Associate existing IP address with instance after launch"
-        
+       
+      option :vlan_id,
+        :long => "--vlan_id VLAN_ID",
+        :description => "The VLAN to use for the instance",
+        :proc => Proc.new { |vlan_id| Chef::Config[:knife][:sce_vlan_id] = vlan_id }
+
+      option :ssh_key_name,
+        :long => "--ssh-key-name SCE_KEY_NAME",
+        :description => "The SCE_KEY to use for the instance",
+        :proc => Proc.new { |ssh_key_name| Chef::Config[:knife][:sce_key_name] = ssh_key_name}
+
       option :is_mini_ephemeral,
         :long => "--is-mini-ephemeral",
         :boolean => true,
@@ -73,8 +83,11 @@ class Chef
         :long => "--anti-collocation-instance INSTANCE_ID",
         :description => "No additional storage",
         :default => nil
-      
-      
+
+      option :secondary_ip,
+        :long => "--secondary-ip IP_ID[,IP_ID,IP_ID]",
+        :description => "Add a secondary IP address to this instance (i.e. multi-homed)",
+        :default => nil
 
       option :chef_node_name,
         :short => "-N NAME",
@@ -86,7 +99,7 @@ class Chef
         :short => "-x USERNAME",
         :long => "--ssh-user USERNAME",
         :description => "The ssh username",
-        :default => "root"
+        :default => "idcuser"
 
       option :ssh_password,
         :short => "-P PASSWORD",
@@ -197,12 +210,9 @@ class Chef
         # elastic_ip = connection.addresses.detect{|addr| addr if addr.public_ip == requested_elastic_ip}
         
         begin
-          
           definition = create_server_def
-          
           # SCE library gives me an excon response object, we have to fetch the server object ourselves:
           excon_response = connection.create_instance(definition[:name], definition[:image_id], definition[:instance_type], definition[:location], definition)
-          puts excon_response.data[:body]["instances"][0]["id"].to_s
           @server = connection.servers.get(excon_response.data[:body]["instances"][0]["id"])
           
           raise "Creating a server failed." if @server.nil?
@@ -210,21 +220,26 @@ class Chef
           msg_pair("Instance ID", @server.id.to_s)
           msg_pair("Name", @server.name.to_s)
           msg_pair("Flavor", @server.instance_type.to_s)
-          msg_pair("Image", @server.image_id.to_s)
+          msg_pair("Image", @server.image.name.to_s)
           msg_pair("Region", connection.locations.get(@server.location).name.to_s)
           msg_pair("SSH Key", @server.key_name.to_s)
-          
-          print "\n#{ui.color("Waiting for server", :magenta)}"
-          
-          msg_pair("Public DNS Name", @server.primary_ip["hostname"].to_s)
-          msg_pair("Public IP Address", @server.primary_ip["ip"].to_s)
           msg_pair("Owner", @server.owner.to_s)
           msg_pair("Environment", config[:environment] || '_default')
           msg_pair("Run List", (config[:run_list] || []).join(', '))
           msg_pair("JSON Attributes",config[:json_attributes]) unless !config[:json_attributes] || config[:json_attributes].empty?
-          
+          msg_pair("VLAN ID", @server.primary_ip["vlan"]["name"].to_s) if @server.primary_ip["vlan"]
+
+          print "\n#{ui.color("Waiting for server", :magenta)}"
           @server.wait_for { print "."; ready? }
           
+          msg_pair("\nPublic DNS Name", @server.primary_ip["hostname"].to_s)
+          msg_pair("Public IP Address", @server.primary_ip["ip"].to_s)
+          if @server.secondary_ip
+            ips = []
+            @server.secondary_ip.each {|item| ips << item['ip']}
+            msg_pair("Secondary IP Addresses", ips.join(","))
+          end
+
           wait_for_sshd(ssh_connect_host)
           
           bootstrap_for_node(@server, ssh_connect_host).run
@@ -273,32 +288,24 @@ class Chef
         !!locate_config_value(:vlan_id)
       end
 
-      def sce_image
-        @sce_image ||= connection.images.get(locate_config_value(:image))
-      end
-
       def validate!
 
-        super([:image, :ibm_username, :ibm_password])
+        super([:ibm_username, :ibm_password])
 
-        if sce_image.nil?
-          ui.error("You have not provided a valid image value.")
-          exit 1
-        end
-        
         if locate_config_value(:sce_flavor).nil?
           ui.error("No flavor provided.  Use knife sce image describe to list supported flavors for used image.")
           exit 1
         else
           
           flavor_found = false
-          @sce_image.supported_instance_types.each do |sit|
+          requested_image = connection.images.get(locate_config_value(:sce_image))
+          requested_image.supported_instance_types.each do |sit|
             if sit.id.to_s.eql?( locate_config_value(:sce_flavor) )
               flavor_found = true
             end
           end
           if !flavor_found
-            ui.error("Flavor #{config[:sce_flavor]} is not supported for image #{locate_config_value(:image)}.  Use knife sce image describe to list supported flavors for used image.")
+            ui.error("Flavor #{config[:sce_flavor]} is not supported for image #{locate_config_value(:sce_image)}.  Use knife sce image describe to list supported flavors for used image.")
             exit 1
           end
           
@@ -317,17 +324,21 @@ class Chef
       def create_server_def
         server_def = {
           :name => locate_config_value(:chef_node_name),
-          :image_id => locate_config_value(:image),
+          :image_id => locate_config_value(:sce_image),
           :instance_type => locate_config_value(:sce_flavor),
-          :location => datacenter_id.to_i,
-          :key_name => File.basename(locate_config_value(:identity_file), ".*"),
-          :ip => locate_config_value(:ip),
-          :vlan_id => locate_config_value(:vlan_id),
-          :secondary_ip => locate_config_value(:secondary_ip),
-          :is_mini_ephemeral => locate_config_value(:is_mini_ephemeral),
-          :configuration_data => locate_config_value(:configuration_data),
-          :anti_collocation_instance => locate_config_value(:anti_collocation_instance),
+          :location => datacenter_id,
+          :key_name => locate_config_value(:sce_key_name)
         }
+        if locate_config_value(:sce_vlan_id)
+          server_def[:vlan_id] = locate_config_value(:sce_vlan_id)
+        end
+        if locate_config_value(:secondary_ip)
+          server_def[:secondary_ip] = locate_config_value(:secondary_ip)
+        end
+
+        %w{ip is_mini_ephemeral configuration_data anti_collocation_instance}.each do |parm|
+          server_def[parm.to_sym] = locate_config_value(parm.to_sym) if locate_config_value(parm.to_sym)
+        end
         server_def
       end
 
