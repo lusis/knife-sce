@@ -84,6 +84,11 @@ class Chef
         :description => "No additional storage",
         :default => nil
 
+      option :volume_id,
+        :long => "--volume-id VOLUME_ID",
+        :description => "Existing persistent volume to attach to the instances at launch",
+        :default => nil
+
       option :secondary_ip,
         :long => "--secondary-ip IP_ID[,IP_ID,IP_ID]",
         :description => "Add a secondary IP address to this instance (i.e. multi-homed)",
@@ -228,6 +233,7 @@ class Chef
           msg_pair("Run List", (config[:run_list] || []).join(', '))
           msg_pair("JSON Attributes",config[:json_attributes]) unless !config[:json_attributes] || config[:json_attributes].empty?
           msg_pair("VLAN ID", @server.primary_ip["vlan"]["name"].to_s) if @server.primary_ip["vlan"]
+          msg_pair("Volume IDs", @server.volume_ids.join(",").to_s) if @server.volume_ids
 
           print "\n#{ui.color("Waiting for server", :magenta)}"
           @server.wait_for { print "."; ready? }
@@ -336,7 +342,7 @@ class Chef
           server_def[:secondary_ip] = locate_config_value(:secondary_ip)
         end
 
-        %w{ip is_mini_ephemeral configuration_data anti_collocation_instance}.each do |parm|
+        %w{ip is_mini_ephemeral configuration_data anti_collocation_instance volume_id}.each do |parm|
           server_def[parm.to_sym] = locate_config_value(parm.to_sym) if locate_config_value(parm.to_sym)
         end
         server_def
