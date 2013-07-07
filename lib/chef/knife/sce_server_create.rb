@@ -178,6 +178,11 @@ class Chef
         :description => "The EC2 server attribute to use for SSH connection",
         :default => nil
 
+      option :no_bootstrap,
+        :long => "--no-bootstrap",
+        :description => "Don't bootstrap the instance, just launch it",
+        :default => false
+
       def tcp_test_ssh(hostname, ssh_port)
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
@@ -247,8 +252,27 @@ class Chef
           end
 
           wait_for_sshd(ssh_connect_host)
-          
-          bootstrap_for_node(@server, ssh_connect_host).run
+         
+          Chef::Config[:knife][:hints] ||= {}
+          Chef::Config[:knife][:hints]["sce"] ||= {}
+          Chef::Config[:knife][:hints]["sce"].merge!({
+            'server_id' => @server.id.to_s,
+            'region' => connection.locations.get(@server.location).name.to_s,
+            'flavor' => @server.instance_type.to_s,
+            'image' => @server.image.name.to_s
+          })
+          if @server.primary_ip["vlan"]
+            Chef::Config[:knife][:hints]["sce"].merge!({
+              'vlan' => @server.primary_ip["vlan"]["name"].to_s
+            })
+          end
+          if @server.volume_ids
+            Chef::Config[:knife][:hints]["sce"].merge!({
+              'volumes' => @server.volume_ids
+            })
+          end
+
+          bootstrap_for_node(@server, ssh_connect_host).run unless locate_config_value(:no_bootstrap)
           
         rescue Excon::Errors::PreconditionFailed => e
           ui.error e.response.data[:body]
@@ -279,12 +303,7 @@ class Chef
         bootstrap.config[:use_sudo] = true unless config[:sce_ssh_user] == 'root'
         bootstrap.config[:template_file] = locate_config_value(:template_file)
         bootstrap.config[:environment] = config[:environment]
-        # may be needed for vlan_mode
         bootstrap.config[:host_key_verify] = config[:host_key_verify]
-        # Modify global configuration state to ensure hint gets set by
-        # knife-bootstrap
-        Chef::Config[:knife][:hints] ||= {}
-        Chef::Config[:knife][:hints]["sce"] ||= {}
         bootstrap
       end
 
