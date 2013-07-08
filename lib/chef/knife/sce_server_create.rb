@@ -231,7 +231,7 @@ class Chef
           msg_pair("Name", @server.name.to_s)
           msg_pair("Flavor", @server.instance_type.to_s)
           msg_pair("Image", @server.image.name.to_s)
-          msg_pair("Region", connection.locations.get(@server.location).name.to_s)
+          msg_pair("Region", @server.location.location)
           msg_pair("SSH Key", @server.key_name.to_s)
           msg_pair("Owner", @server.owner.to_s)
           msg_pair("Environment", config[:environment] || '_default')
@@ -257,7 +257,7 @@ class Chef
           Chef::Config[:knife][:hints]["sce"] ||= {}
           Chef::Config[:knife][:hints]["sce"].merge!({
             'server_id' => @server.id.to_s,
-            'region' => connection.locations.get(@server.location).name.to_s,
+            'region' => @server.location.location,
             'flavor' => @server.instance_type.to_s,
             'image' => @server.image.name.to_s
           })
