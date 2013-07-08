@@ -64,7 +64,7 @@ class Chef
         :description => "Associate existing IP address with instance after launch"
        
       option :vlan_id,
-        :long => "--vlan_id VLAN_ID",
+        :long => "--vlan-id VLAN_ID",
         :description => "The VLAN to use for the instance",
         :proc => Proc.new { |vlan_id| Chef::Config[:knife][:sce_vlan_id] = vlan_id }
 
